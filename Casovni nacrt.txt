@@ -1,0 +1,17 @@
+﻿1. teden:
+	Časovni in vsebinski načrt
+	
+2. teden:
+	Izdelava načrta dela, načrtovanje programa ter vsebinskega vmesnika
+	
+3. teden:
+	Programiranje, testiranje, dokumentiranje - izdelava grafičnega vmesnika
+	
+4. teden:
+	Programiranje, testiranje, dokumentiranje - programiranje igre
+	
+5. teden:
+	Programiranje, testiranje, dokumentiranje - programiranje igre, zadnji popravki, pisanje dokumentacije
+	
+6. teden:
+	Oddaja in priprava na zagovor
