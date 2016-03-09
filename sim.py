@@ -126,24 +126,34 @@ class Gui():
         menu = tkinter.Menu(master)
         master.config(menu=menu)
 
-        # Podmenu za izbiro igre
+        # Podmenu za izbiro igralcev
         menu_igra = tkinter.Menu(menu)
+        menu_igralci = tkinter.Menu(menu)
+
         menu.add_cascade(label="Igra", menu=menu_igra)
-        menu_igra.add_command(label="X=Človek, O=Človek",         command=lambda: self.zacni_igro(Clovek, Clovek))
-        menu_igra.add_command(label="X=Človek, O=Računalnik",     command=lambda: self.zacni_igro(Clovek, Minimax))
-        menu_igra.add_command(label="X=Računalnik, O=Človek",     command=lambda: self.zacni_igro(Minimax, Clovek))
-        menu_igra.add_command(label="X=Računalnik, O=Računalnik", command=lambda: self.zacni_igro(Minimax, Minimax))
+        menu_igra.add_command(label="Nova igra")
+        menu_igra.add_command(label="Razveljavi")
+        menu_igra.add_separator()
+        menu_igra.add_command(label="Izhod", command=master.quit)
+
+        menu.add_cascade(label="Igralci", menu=menu_igralci)
+        menu_igralci.add_command(label="X=Človek, O=Človek",         command=lambda: self.zacni_igro(Clovek, Clovek))
+        menu_igralci.add_command(label="X=Človek, O=Računalnik",     command=lambda: self.zacni_igro(Clovek, Minimax))
+        menu_igralci.add_command(label="X=Računalnik, O=Človek",     command=lambda: self.zacni_igro(Minimax, Clovek))
+        menu_igralci.add_command(label="X=Računalnik, O=Računalnik", command=lambda: self.zacni_igro(Minimax, Minimax))
+
+
 
         # Katera pika
         self.pozicija_prve = None
         
         # Napis, ki prikazuje stanje igre
-        self.napis = tkinter.StringVar(master, value="Isti SimCity")
+        self.napis = tkinter.StringVar(master, value="Na potezi je igralec 1")
         tkinter.Label(master, textvariable=self.napis).grid(row=0, column=0)
 
         # Igralno območje
         self.plosca = tkinter.Canvas(master, width=600, height=600)
-        self.plosca.grid(row=1, column=0, columnspan=2)
+        self.plosca.grid(row=1, column=0)
 
         # Pike na igralnem polju
         self.plosca.create_oval(290,105,310,85,tags='pika0', fill='black')
@@ -171,18 +181,23 @@ class Gui():
         self.igralec_2 = Clovek(self)
         self.zacni_igro()
 
-    def zacni_igro(self, igralec_1, igralec_2):
+    def zacni_igro(self, igralec_1=Clovek, igralec_2=Clovek):
         """Nastavi stanje igre na zacetek igre."""
         self.igra = Igra()
         self.igralec_1 = igralec_1(self)
         self.igralec_2 = igralec_2(self)
         self.igralec_1.igraj()
 
-    def koncaj_igro(self):
+    def koncaj_igro(self, trojica):
         """Nastavi stanje igre na konec igre."""
-        print ("KONEC!")
+        barva = ['blue', 'red'][trojica[1] - 1]
+        self.narisi_crto(trojica[2][0], trojica[2][1], barva, 10)
+        self.narisi_crto(trojica[2][1], trojica[2][2], barva, 10)
+        self.narisi_crto(trojica[2][0], trojica[2][2], barva, 10)
+        self.napis.set('Izgubil je igralec {}'.format(trojica[1] + 1))
 
-    def narisi_crto(self, prva_pika, druga_pika, barva):
+
+    def narisi_crto(self, prva_pika, druga_pika, barva, debelina=5):
         pike = [[300, 95],
                 [450, 200],
                 [450, 400],
@@ -191,7 +206,7 @@ class Gui():
                 [150, 200]]
         x0, y0 = pike[prva_pika][0], pike[prva_pika][1]
         x1, y1 = pike[druga_pika][0], pike[druga_pika][1]
-        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=5, state='disabled', tags='crta')
+        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=debelina, state='disabled', tags='crta')
         self.plosca.tag_lower('crta')
 
     def pika_klik(self, pozicija):
@@ -210,11 +225,12 @@ class Gui():
         elif self.igra.je_veljavna(self.pozicija_prve, pozicija):
             r = self.igra.povleci(self.pozicija_prve, pozicija)
             if r:
-                barva = ['blue', 'yellow'][igralec - 1]
+                barva = ['blue', 'red'][igralec - 1]
                 self.narisi_crto(self.pozicija_prve, pozicija, barva)
             if r[0]:
-                self.koncaj_igro()
+                self.koncaj_igro(r)
             else:
+                self.napis.set('Na potezi je igralec {}'.format(self.igra.na_potezi))
                 if self.igra.na_potezi == IGRALEC_1:
                     self.igralec_1.igraj()
                 elif self.igra.na_potezi == IGRALEC_2:
