@@ -52,7 +52,8 @@ class Igra():
 
     def je_veljavna(self, i, j):
         """Vrne True, če je poteza veljavna in False, če je neveljavna."""
-        return ((self.polje[i][j], self.polje[j][i]) == (PRAZNO, PRAZNO))
+        ##izraz = ((self.polje[i][j], self.polje[j][i]) == (PRAZNO, PRAZNO))
+        return self.polje[i][j] == PRAZNO
 
     def je_konec(self):
         '''Vrne trojico (True, porazenec, povezane pike), če je igra končana in (False, None, PRAZNO), če igre še ni konec.'''
@@ -73,7 +74,6 @@ class Igra():
             for j in range(i, 6):
                 if self.je_veljavna(i, j):
                     poteze.append((i,j))
-        print(poteze)
         return poteze
 
     def povleci(self, i, j):
@@ -191,7 +191,8 @@ class Gui():
                 [150, 200]]
         x0, y0 = pike[prva_pika][0], pike[prva_pika][1]
         x1, y1 = pike[druga_pika][0], pike[druga_pika][1]
-        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=5)
+        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=5, state='disabled', tags='crta')
+        self.plosca.tag_lower('crta')
 
     def pika_klik(self, pozicija):
         def pomozna(event):
@@ -207,24 +208,21 @@ class Gui():
         if self.pozicija_prve == None:
             self.pozicija_prve = pozicija
         elif self.igra.je_veljavna(self.pozicija_prve, pozicija):
-            print('je kul')
             r = self.igra.povleci(self.pozicija_prve, pozicija)
-            if r == None:
-                print('bla bla')
-            else:
+            if r:
                 barva = ['blue', 'yellow'][igralec - 1]
                 self.narisi_crto(self.pozicija_prve, pozicija, barva)
-                # self.igra.povleci(self.pozicija_prve, pozicija)
             if r[0]:
                 self.koncaj_igro()
             else:
                 if self.igra.na_potezi == IGRALEC_1:
                     self.igralec_1.igraj()
-                else:
+                elif self.igra.na_potezi == IGRALEC_2:
                     self.igralec_2.igraj()
+                else:
+                    assert False, 'Na potezi ni noben igralec'
             self.pozicija_prve = None
         else:
-            print('bla')
             self.pozicija_prve = None
 
 
