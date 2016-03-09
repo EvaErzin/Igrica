@@ -221,8 +221,12 @@ class Gui():
         """Povleci potezo (i,j)."""
         igralec = self.igra.na_potezi
         if self.pozicija_prve == None:
+            oznaka = 'pika{}'.format(pozicija)
             self.pozicija_prve = pozicija
+            self.plosca.itemconfig(oznaka, fill='grey')
         elif self.igra.je_veljavna(self.pozicija_prve, pozicija):
+            oznaka = 'pika{}'.format(self.pozicija_prve)
+            self.plosca.itemconfig(oznaka, fill='black')
             r = self.igra.povleci(self.pozicija_prve, pozicija)
             if r:
                 barva = ['blue', 'red'][igralec - 1]
