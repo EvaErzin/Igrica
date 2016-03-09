@@ -194,7 +194,7 @@ class Gui():
         self.narisi_crto(trojica[2][0], trojica[2][1], barva, 10)
         self.narisi_crto(trojica[2][1], trojica[2][2], barva, 10)
         self.narisi_crto(trojica[2][0], trojica[2][2], barva, 10)
-        self.napis.set('Izgubil je igralec {}'.format(trojica[1] + 1))
+        self.napis.set('Izgubil je igralec {}'.format(trojica[1]))
 
 
     def narisi_crto(self, prva_pika, druga_pika, barva, debelina=5):
