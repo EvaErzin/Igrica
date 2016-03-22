@@ -35,6 +35,7 @@ class Igra():
                       [PRAZNO, PRAZNO, PRAZNO, PRAZNO, PRAZNO, 0]]
         self.na_potezi = IGRALEC_1
         self.zgodovina = []
+        self.zgodovina_pik = []
 
     def shrani_pozicijo(self):
         """Shrani trenutno pozicijo."""
@@ -48,9 +49,11 @@ class Igra():
         kopija.na_potezi = self.na_potezi
         return kopija
 
-    def razveljavi(self):
+    def razveljavi(self, i, j):
         """Razveljavi potezo in se vrne v prejšnje stanje."""
-        (self.polje, self.na_potezi) = self.zgodovina.pop()
+        self.zgodovina.pop()
+        self.polje[i][j], self.polje[j][i] = PRAZNO, PRAZNO
+        self.na_potezi = nasprotnik(self.na_potezi)
 
     def je_veljavna(self, i, j):
         """Vrne True, če je poteza veljavna in False, če je neveljavna."""
@@ -86,6 +89,7 @@ class Igra():
         else:
             self.shrani_pozicijo()
             self.polje[i][j], self.polje[j][i] = self.na_potezi, self.na_potezi
+            self.zgodovina_pik.append((i, j))
             (konec, porazenec, povezane_pike) = self.je_konec()
             if konec:
                 self.na_potezi = None
@@ -378,6 +382,7 @@ class Gui():
         self.igralec_1 = None
         self.igralec_2 = None
         self.igra = None
+        self.zadnja = None
 
         master.protocol('WM_DELETE_WINDOW', lambda: self.zapri_okno(master))
 
@@ -393,13 +398,13 @@ class Gui():
         menu_rac = tkinter.Menu(menu_igralci)
 
         menu.add_cascade(label="Igra", menu=menu_igra)
-        menu_igra.add_command(label="Nova igra")
-        menu_igra.add_command(label="Razveljavi")
+        menu_igra.add_command(label="Nova igra", command=lambda: self.zacni_igro(self.igralec_1, self.igralec_2))
+        menu_igra.add_command(label="Razveljavi", command=self.razveljavi_potezo)
         menu_igra.add_separator()
         menu_igra.add_command(label="Izhod", command=master.quit)
 
         menu.add_cascade(label="Igralci", menu=menu_igralci)
-        menu_igralci.add_command(label="1=Človek, 2=Človek",         command=lambda: self.zacni_igro(Clovek(self), Clovek(self)))
+        menu_igralci.add_command(label="1=Človek, 2=Človek", command=lambda: self.zacni_igro(Clovek(self), Clovek(self)))
         menu_igralci.add_cascade(label="1=Človek, 2=Računalnik", menu=menu_clo_rac) ##
         menu_igralci.add_cascade(label="1=Računalnik, 2=Človek", menu=menu_rac_clo) ##     command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Clovek(self)))
         menu_igralci.add_cascade(label="1=Računalnik, 2=Računalnik", menu=menu_rac) ## command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Minimax(globina))))
@@ -445,6 +450,12 @@ class Gui():
         # Prični z izbiro igralcev
         self.zacni_igro(Clovek(self), Clovek(self))
 
+    def razveljavi_potezo(self):
+        (i, j) = self.igra.zgodovina_pik.pop()
+        i, j = min(i, j), max(i, j)
+        self.igra.razveljavi(i, j)
+        self.plosca.delete('crta{0}{1}'.format(i, j))
+        self.napis.set("Na potezi je igralec {}".format(self.igra.na_potezi))
 
     def zacni_igro(self, igralec_1, igralec_2):
         """Nastavi stanje igre na zacetek igre."""
@@ -452,8 +463,12 @@ class Gui():
         self.prekini_igralce()
         self.plosca.delete('crta')
         self.igra = Igra()
-        self.igralec_1 = igralec_1
-        self.igralec_2 = igralec_2
+        if (igralec_1, igralec_2) == (None, None):
+            self.igralec_1 = Clovek(self)
+            self.igralec_2 = Clovek(self)
+        else:
+            self.igralec_1 = igralec_1
+            self.igralec_2 = igralec_2
         self.igralec_1.igraj()
 
     def koncaj_igro(self, trojica):
@@ -488,7 +503,9 @@ class Gui():
                 [150, 200]]
         x0, y0 = pike[prva_pika][0], pike[prva_pika][1]
         x1, y1 = pike[druga_pika][0], pike[druga_pika][1]
-        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=debelina, state='disabled', tags='crta')
+        a = min(prva_pika, druga_pika)
+        b = max(prva_pika, druga_pika)
+        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=debelina, state='disabled', tags=('crta', 'crta{0}{1}'.format(a, b)))
         self.plosca.tag_lower('crta')
 
     def pika_klik(self, pozicija):
