@@ -2,9 +2,10 @@ import tkinter
 import threading
 import argparse
 import logging
+import time
 
 # Privzeta minimax globina, če je nismo podali ob zagonu v ukazni vrstici
-MINIMAX_PRIVZETA_GLOBINA = 3 
+MINIMAX_PRIVZETA_GLOBINA = 4
 
 ######################################################################
 # ## Igra
@@ -13,6 +14,7 @@ MINIMAX_PRIVZETA_GLOBINA = 3
 IGRALEC_1 = 1
 IGRALEC_2 = 2
 PRAZNO = "."
+
 
 def nasprotnik(igralec):
     if igralec == IGRALEC_1:
@@ -71,10 +73,11 @@ class Igra():
         """Vrne seznam veljavnih potez."""
         poteze = []
         for i in range(6):
-            for j in range(i, 6):
-                if self.je_veljavna(i, j):
+            for j in range(i+1, 6):
+                if self.je_veljavna(i, j) and (i, j) not in poteze:
                     poteze.append((i,j))
         return poteze
+
 
     def povleci(self, i, j):
         """Povleče potezo in vrne dvojico pik, če je ta veljavna in vrne None če ni."""
@@ -106,22 +109,278 @@ class Clovek():
 
     def klik(self, pozicija):
         self.gui.povleci_potezo(pozicija)
+
+######################################################################
+## Igralec računalnik
+
+class Racunalnik():
+    def __init__(self, gui, algoritem):
+        self.gui = gui
+        self.algoritem = algoritem #Algoritem, ki izračuna potezo
+        self.mislec = None #Vlakno, ki razmišlja
+
+    def igraj(self):
+        '''Igra potezo, ki jo vrne algoritem'''
+        self.mislec = threading.Thread(target=lambda : self.algoritem.izracunaj_potezo(self.gui.igra.kopija()))
+        self.mislec.start()
+        self.gui.plosca.after(100, self.preveri_potezo)
+
+    def preveri_potezo(self):
+        if self.algoritem.poteza is not None:
+            self.gui.povleci_potezo(self.algoritem.poteza[0])
+            self.gui.povleci_potezo(self.algoritem.poteza[1])
+            self.mislec = None
+        else:
+            self.gui.plosca.after(100, self.preveri_potezo)
+
+    def prekini(self):
+        if self.mislec:
+            logging.debug('Prekinjamo{0}'.format(self.mislec))
+            self.algoritem.prekini()
+            self.mislec.join()
+            self.mislec = None
+
+    def klik(self, p):
+        pass
+
+
 ######################################################################
 ## Igralec minimax
 
 class Minimax():
     def __init__(self, globina):
         self.globina = globina
+        self.prekinitev = False
+        self.igra = None
+        self.jaz = None
+        self.poteza = None
 
-    def poteza(self, igra, igralec):
-        return igra.veljavne_poteze[0]
-        
+    def prekini(self):
+        self.prekinitev = True
+
+    def izracunaj_potezo(self, igra):
+        '''Izračuna potezo za trenutno stanje dane igre.'''
+        self.igra = igra
+        self.prekinitev = False
+        self.jaz = self.igra.na_potezi
+        self.poteza = None
+        (poteza, vrednost) = self.minimax(self.globina, True)
+        self.jaz = None
+        self.igra = None
+        if not self.prekinitev:
+            logging.debug('minimax: poteza {0}, vrednost {1}'.format(poteza, vrednost))
+        self.poteza = poteza
+
+    # Vrednosti igre
+    ZMAGA = 100000
+    NESKONCNO = ZMAGA + 1
+
+    def vrednost_pozicije(self):
+        '''Ocena vrednosti pozicije: sešteje vrednosti vseh trikotnikov na plošči.'''
+        vrednost_trikotnika = {
+            (0, 3): Minimax.ZMAGA,
+            (3, 0): -Minimax.ZMAGA//10,
+            (0, 2): Minimax.ZMAGA//100,
+            (2, 0): -Minimax.ZMAGA//1000,
+            (0, 1): Minimax.ZMAGA//10000,
+            (1, 0): -Minimax.ZMAGA//100000
+        }
+        vrednost = 0
+        for i in range(6):
+            for j in range(i+1, 6):
+                for k in range (j+1, 6):
+                    x = 0
+                    y = 0
+                    if self.igra.polje[i][j] == self.jaz:
+                        x += 1
+                    elif self.igra.polje[i][j] == nasprotnik(self.jaz):
+                        y += 1
+                    if self.igra.polje[j][k] == self.jaz:
+                        x += 1
+                    elif self.igra.polje[j][k] == nasprotnik(self.jaz):
+                        y += 1
+                    if self.igra.polje[i][k] == self.jaz:
+                        x += 1
+                    elif self.igra.polje[i][k] == nasprotnik(self.jaz):
+                        y += 1
+                    vrednost += vrednost_trikotnika.get((x, y), 0)
+        return vrednost
+
+    def minimax(self, globina, maksimiziramo):
+        '''Glavna metoda minimax.'''
+        if self.prekinitev:
+            logging.debug('Minimax prekinja, globina = {0}'.format(globina))
+            return (None, 0)
+        (konec, porazenec, pike) = self.igra.je_konec()
+        if konec:
+            if porazenec == self.jaz:
+                return (None, -Minimax.ZMAGA)
+            elif porazenec == nasprotnik(self.jaz):
+                return (None, Minimax.ZMAGA)
+            else:
+                assert False, 'Konec igre brez zmagovalca.'
+        elif not konec:
+            if globina == 0:
+                return (None, self.vrednost_pozicije())
+            else:
+                if maksimiziramo:
+                    najboljsa_poteza = None
+                    vrednost_najboljse = -Minimax.NESKONCNO
+                    for (i, j) in self.igra.veljavne_poteze():
+                        self.igra.povleci(i, j)
+                        vrednost = self.minimax(globina-1, not maksimiziramo)[1]
+                        self.igra.razveljavi()
+                        if vrednost > vrednost_najboljse:
+                            vrednost_najboljse = vrednost
+                            najboljsa_poteza = (i, j)
+                else:
+                    najboljsa_poteza = None
+                    vrednost_najboljse = Minimax.NESKONCNO
+                    for (i, j) in self.igra.veljavne_poteze():
+                        self.igra.povleci(i, j)
+                        vrednost = self.minimax(globina-1, not maksimiziramo)[1]
+                        self.igra.razveljavi()
+                        if vrednost < vrednost_najboljse:
+                            vrednost_najboljse = vrednost
+                            najboljsa_poteza = (i, j)
+
+                assert (najboljsa_poteza is not None), 'minimax: izračunana poteza je None'
+                return (najboljsa_poteza, vrednost_najboljse)
+        else: assert False, 'minimax: nedefinirano stanje igre'
+
+######################################################################
+## Igralec alfa-beta
+
+class Alpha_Beta():
+
+    def __init__(self, globina):
+        self.globina = globina
+        self.prekinitev = False
+        self.igra = None
+        self.jaz = None
+        self.poteza = None
+
+    def prekini(self):
+        self.prekinitev = True
+
+    # Vrednosti igre
+    ZMAGA = 100000
+    NESKONCNO = ZMAGA + 1
+
+    def vrednost_pozicije(self):
+        '''Ocena vrednosti pozicije: sešteje vrednosti vseh trikotnikov na plošči.'''
+        vrednost_trikotnika = {
+            (0, 3): Alpha_Beta.ZMAGA,
+            (3, 0): -Alpha_Beta.ZMAGA//10,
+            (0, 2): Alpha_Beta.ZMAGA//100,
+            (2, 0): -Alpha_Beta.ZMAGA//1000,
+            (0, 1): Alpha_Beta.ZMAGA//10000,
+            (1, 0): -Alpha_Beta.ZMAGA//100000
+        }
+        vrednost = 0
+        for i in range(6):
+            for j in range(i+1, 6):
+                for k in range (j+1, 6):
+                    x = 0
+                    y = 0
+                    if self.igra.polje[i][j] == self.jaz:
+                        x += 1
+                    elif self.igra.polje[i][j] == nasprotnik(self.jaz):
+                        y += 1
+                    if self.igra.polje[j][k] == self.jaz:
+                        x += 1
+                    elif self.igra.polje[j][k] == nasprotnik(self.jaz):
+                        y += 1
+                    if self.igra.polje[i][k] == self.jaz:
+                        x += 1
+                    elif self.igra.polje[i][k] == nasprotnik(self.jaz):
+                        y += 1
+                    vrednost += vrednost_trikotnika.get((x, y), 0)
+        return vrednost
+
+    def izracunaj_potezo(self, igra):
+        '''Izračuna potezo za trenutno stanje dane igre.'''
+        self.igra = igra
+        self.prekinitev = False
+        self.jaz = self.igra.na_potezi
+        self.poteza = None
+        (poteza, vrednost) = self.alphabeta(self.globina, True, -Alpha_Beta.NESKONCNO, Alpha_Beta.NESKONCNO)
+        self.jaz = None
+        self.igra = None
+        if not self.prekinitev:
+            logging.debug('minimax: poteza {0}, vrednost {1}'.format(poteza, vrednost))
+        self.poteza = poteza
+
+    def alphabeta(self, globina, maksimiziramo, alpha, beta):
+        '''Glavna metoda minimax.'''
+        if self.prekinitev:
+            logging.debug('Minimax prekinja, globina = {0}'.format(globina))
+            return (None, 0)
+        (konec, porazenec, pike) = self.igra.je_konec()
+        if konec:
+            if porazenec == self.jaz:
+                return (None, -Alpha_Beta.ZMAGA)
+            elif porazenec == nasprotnik(self.jaz):
+                return (None, Alpha_Beta.ZMAGA)
+            else:
+                assert False, 'Konec igre brez zmagovalca.'
+        elif not konec:
+            if globina == 0:
+                return (None, self.vrednost_pozicije())
+            else:
+                if maksimiziramo:
+                    a = alpha
+                    b = beta
+                    najboljsa_poteza = None
+                    vrednost_najboljse = -Alpha_Beta.NESKONCNO
+                    for (i, j) in self.igra.veljavne_poteze():
+                        self.igra.povleci(i, j)
+                        vrednost = self.alphabeta(globina-1, not maksimiziramo, alpha, beta)[1]
+                        self.igra.razveljavi()
+                        if vrednost > vrednost_najboljse:
+                            vrednost_najboljse = vrednost
+                            najboljsa_poteza = (i, j)
+                        if vrednost > a:
+                            a = vrednost
+                        if b <= a:
+                            break
+                    return (najboljsa_poteza, vrednost_najboljse)
+
+                else:
+                    a = alpha
+                    b = beta
+                    najboljsa_poteza = None
+                    vrednost_najboljse = Alpha_Beta.NESKONCNO
+                    for (i, j) in self.igra.veljavne_poteze():
+                        self.igra.povleci(i, j)
+                        vrednost = self.alphabeta(globina-1, not maksimiziramo, alpha, beta)[1]
+                        self.igra.razveljavi()
+                        if vrednost < vrednost_najboljse:
+                            vrednost_najboljse = vrednost
+                            najboljsa_poteza = (i, j)
+                        if vrednost < b:
+                            b = vrednost
+                        if b < a:
+                            break
+                    return (najboljsa_poteza, vrednost_najboljse)
+
+                assert (najboljsa_poteza is not None), 'alfa-beta: izračunana poteza je None'
+        else: assert False, 'alfa-beta: nedefinirano stanje igre'
+
+
+
 ######################################################################
 ## Uporabniški vmesnik
 
 class Gui():
 
-    def __init__(self, master):
+    def __init__(self, master, globina):
+        self.igralec_1 = None
+        self.igralec_2 = None
+        self.igra = None
+
+        master.protocol('WM_DELETE_WINDOW', lambda: self.zapri_okno(master))
+
         # Glavni menu
         menu = tkinter.Menu(master)
         master.config(menu=menu)
@@ -129,6 +388,9 @@ class Gui():
         # Podmenu za izbiro igralcev
         menu_igra = tkinter.Menu(menu)
         menu_igralci = tkinter.Menu(menu)
+        menu_clo_rac = tkinter.Menu(menu_igralci)
+        menu_rac_clo = tkinter.Menu(menu_igralci)
+        menu_rac = tkinter.Menu(menu_igralci)
 
         menu.add_cascade(label="Igra", menu=menu_igra)
         menu_igra.add_command(label="Nova igra")
@@ -137,16 +399,26 @@ class Gui():
         menu_igra.add_command(label="Izhod", command=master.quit)
 
         menu.add_cascade(label="Igralci", menu=menu_igralci)
-        menu_igralci.add_command(label="X=Človek, O=Človek",         command=lambda: self.zacni_igro(Clovek, Clovek))
-        menu_igralci.add_command(label="X=Človek, O=Računalnik",     command=lambda: self.zacni_igro(Clovek, Minimax))
-        menu_igralci.add_command(label="X=Računalnik, O=Človek",     command=lambda: self.zacni_igro(Minimax, Clovek))
-        menu_igralci.add_command(label="X=Računalnik, O=Računalnik", command=lambda: self.zacni_igro(Minimax, Minimax))
+        menu_igralci.add_command(label="1=Človek, 2=Človek",         command=lambda: self.zacni_igro(Clovek(self), Clovek(self)))
+        menu_igralci.add_cascade(label="1=Človek, 2=Računalnik", menu=menu_clo_rac) ##
+        menu_igralci.add_cascade(label="1=Računalnik, 2=Človek", menu=menu_rac_clo) ##     command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Clovek(self)))
+        menu_igralci.add_cascade(label="1=Računalnik, 2=Računalnik", menu=menu_rac) ## command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Minimax(globina))))
+
+        menu_clo_rac.add_command(label="Algoritem Minimax", command=lambda: self.zacni_igro(Clovek(self), Racunalnik(self, Minimax(globina))))
+        menu_clo_rac.add_command(label="Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Clovek(self), Racunalnik(self, Alpha_Beta(globina))))
+        menu_rac_clo.add_command(label="Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Clovek(self)))
+        menu_rac_clo.add_command(label="Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Clovek(self)))
+        menu_rac.add_command(label="1=Algoritem Minimax, 2=Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Minimax(globina))))
+        menu_rac.add_command(label="1=Algoritem Minimax, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Alpha_Beta(globina))))
+        menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Minimax(globina))))
+        menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Alpha_Beta(globina))))
+
 
 
 
         # Katera pika
         self.pozicija_prve = None
-        
+
         # Napis, ki prikazuje stanje igre
         self.napis = tkinter.StringVar(master, value="Na potezi je igralec 1")
         tkinter.Label(master, textvariable=self.napis).grid(row=0, column=0)
@@ -171,21 +443,17 @@ class Gui():
         self.plosca.tag_bind('pika5','<Button-1>',func=self.pika_klik(5))
 
         # Prični z izbiro igralcev
-        self.zacni_igro(Clovek, Clovek)
+        self.zacni_igro(Clovek(self), Clovek(self))
 
-    def izbira_igralcev(self):
-        """Nastavi stanje igre na izbiranje igralcev."""
-        # Zaenkrat kar preskocimo izbiro igralcev in
-        # predpostavimo, da sta oba igralca človeka
-        self.igralec_1 = Clovek(self)
-        self.igralec_2 = Clovek(self)
-        self.zacni_igro()
 
-    def zacni_igro(self, igralec_1=Clovek, igralec_2=Clovek):
+    def zacni_igro(self, igralec_1, igralec_2):
         """Nastavi stanje igre na zacetek igre."""
+        self.napis.set("Na potezi je igralec 1")
+        self.prekini_igralce()
+        self.plosca.delete('crta')
         self.igra = Igra()
-        self.igralec_1 = igralec_1(self)
-        self.igralec_2 = igralec_2(self)
+        self.igralec_1 = igralec_1
+        self.igralec_2 = igralec_2
         self.igralec_1.igraj()
 
     def koncaj_igro(self, trojica):
@@ -196,6 +464,20 @@ class Gui():
         self.narisi_crto(trojica[2][0], trojica[2][2], barva, 10)
         self.napis.set('Izgubil je igralec {}'.format(trojica[1]))
 
+    def prekini_igralce(self):
+        """Sporoči igralcem, da morajo nehati razmišljati."""
+        logging.debug ("prekinjam igralce")
+        if self.igralec_1: self.igralec_1.prekini()
+        if self.igralec_2: self.igralec_2.prekini()
+
+    def zapri_okno(self, master):
+        """Ta metoda se pokliče, ko uporabnik zapre aplikacijo."""
+        # Vlaknom, ki tečejo vzporedno, je treba sporočiti, da morajo
+        # končati, sicer se bo okno zaprlo, aplikacija pa bo še vedno
+        # delovala.
+        self.prekini_igralce()
+        # Dejansko zapremo okno.
+        master.destroy()
 
     def narisi_crto(self, prva_pika, druga_pika, barva, debelina=5):
         pike = [[300, 95],
@@ -243,11 +525,13 @@ class Gui():
                     assert False, 'Na potezi ni noben igralec'
             self.pozicija_prve = None
         else:
+            oznaka = 'pika{}'.format(self.pozicija_prve)
+            self.plosca.itemconfig(oznaka, fill='black')
             self.pozicija_prve = None
 
 
-            
-            
+
+
 
 
 
@@ -255,7 +539,28 @@ class Gui():
 ## Glavni program
 
 if __name__ == "__main__":
+
+    # Opišemo argumente, ki jih sprejmemo iz ukazne vrstice
+    parser = argparse.ArgumentParser(description="Igrica Sim")
+    # Argument --globina n, s privzeto vrednostjo MINIMAX_PRIVZETA_GLOBINA
+    parser.add_argument('--globina',
+                        default=MINIMAX_PRIVZETA_GLOBINA,
+                        type=int,
+                        help='globina iskanja za minimax algoritem')
+    # Argument --debug, ki vklopi sporočila o tem, kaj se dogaja
+    parser.add_argument('--debug',
+                        action='store_true',
+                        help='vklopi sporočila o dogajanju')
+
+    # Obdelamo argumente iz ukazne vrstice
+    args = parser.parse_args()
+
+    # Vklopimo sporočila, če je uporabnik podal --debug
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+
+
     root = tkinter.Tk()
     root.title("Sim")
-    aplikacija = Gui(root)
+    aplikacija = Gui(root, args.globina)
     root.mainloop()
