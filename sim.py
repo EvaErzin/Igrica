@@ -5,7 +5,7 @@ import logging
 import time
 
 # Privzeta minimax globina, če je nismo podali ob zagonu v ukazni vrstici
-MINIMAX_PRIVZETA_GLOBINA = 4
+PRIVZETA_GLOBINA = 3
 
 ######################################################################
 # ## Igra
@@ -542,9 +542,9 @@ if __name__ == "__main__":
 
     # Opišemo argumente, ki jih sprejmemo iz ukazne vrstice
     parser = argparse.ArgumentParser(description="Igrica Sim")
-    # Argument --globina n, s privzeto vrednostjo MINIMAX_PRIVZETA_GLOBINA
+    # Argument --globina n, s privzeto vrednostjo PRIVZETA_GLOBINA
     parser.add_argument('--globina',
-                        default=MINIMAX_PRIVZETA_GLOBINA,
+                        default=PRIVZETA_GLOBINA,
                         type=int,
                         help='globina iskanja za minimax algoritem')
     # Argument --debug, ki vklopi sporočila o tem, kaj se dogaja
