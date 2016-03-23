@@ -2,7 +2,6 @@ import tkinter
 import threading
 import argparse
 import logging
-import time
 
 # Privzeta minimax globina, če je nismo podali ob zagonu v ukazni vrstici
 PRIVZETA_GLOBINA = 3
@@ -49,15 +48,12 @@ class Igra():
         kopija.na_potezi = self.na_potezi
         return kopija
 
-    def razveljavi(self, i, j):
+    def razveljavi(self):
         """Razveljavi potezo in se vrne v prejšnje stanje."""
-        self.zgodovina.pop()
-        self.polje[i][j], self.polje[j][i] = PRAZNO, PRAZNO
-        self.na_potezi = nasprotnik(self.na_potezi)
+        (self.polje, self.na_potezi) = self.zgodovina.pop()
 
     def je_veljavna(self, i, j):
         """Vrne True, če je poteza veljavna in False, če je neveljavna."""
-        ##izraz = ((self.polje[i][j], self.polje[j][i]) == (PRAZNO, PRAZNO))
         return self.polje[i][j] == PRAZNO
 
     def je_konec(self):
@@ -425,12 +421,15 @@ class Gui():
         self.pozicija_prve = None
 
         # Napis, ki prikazuje stanje igre
-        self.napis = tkinter.StringVar(master, value="Na potezi je igralec 1")
-        tkinter.Label(master, textvariable=self.napis).grid(row=0, column=0)
-
+        self.napis = tkinter.StringVar(master, value="IGRALEC 1")
+        self.napis1 = tkinter.StringVar(master, value='Na potezi je ')
+        tkinter.Label(master, textvariable=self.napis1).grid(row=0, column=0, sticky='e')
+        self.label_igralec = tkinter.Label(master, textvariable=self.napis, fg='blue')
+        self.label_igralec.grid(row=0, column=1, sticky='w')
+        
         # Igralno območje
         self.plosca = tkinter.Canvas(master, width=600, height=600)
-        self.plosca.grid(row=1, column=0)
+        self.plosca.grid(row=2, column=0, columnspan=2)
 
         # Pike na igralnem polju
         self.plosca.create_oval(290,105,310,85,tags='pika0', fill='black')
@@ -450,16 +449,11 @@ class Gui():
         # Prični z izbiro igralcev
         self.zacni_igro(Clovek(self), Clovek(self))
 
-    def razveljavi_potezo(self):
-        (i, j) = self.igra.zgodovina_pik.pop()
-        i, j = min(i, j), max(i, j)
-        self.igra.razveljavi(i, j)
-        self.plosca.delete('crta{0}{1}'.format(i, j))
-        self.napis.set("Na potezi je igralec {}".format(self.igra.na_potezi))
 
     def zacni_igro(self, igralec_1, igralec_2):
         """Nastavi stanje igre na zacetek igre."""
-        self.napis.set("Na potezi je igralec 1")
+        self.napis.set("IGRALEC 1")
+        self.barva = "blue"
         self.prekini_igralce()
         self.plosca.delete('crta')
         self.igra = Igra()
@@ -477,7 +471,10 @@ class Gui():
         self.narisi_crto(trojica[2][0], trojica[2][1], barva, 10)
         self.narisi_crto(trojica[2][1], trojica[2][2], barva, 10)
         self.narisi_crto(trojica[2][0], trojica[2][2], barva, 10)
-        self.napis.set('Izgubil je igralec {}'.format(trojica[1]))
+        self.napis1.set('Izgubil je ')
+        self.napis.set('IGRALEC {}'.format(trojica[1]))
+        barva = ["blue", "red"][trojica[1] - 1]
+        self.label_igralec.configure(fg=barva) 
 
     def prekini_igralce(self):
         """Sporoči igralcem, da morajo nehati razmišljati."""
@@ -517,7 +514,7 @@ class Gui():
         return pomozna
 
     def povleci_potezo(self, pozicija):
-        """Povleci potezo (i,j)."""
+        """Shrani pozicijo prve pike in povlece potezo, ce je ta ze shranjena."""
         igralec = self.igra.na_potezi
         if self.pozicija_prve == None:
             oznaka = 'pika{}'.format(pozicija)
@@ -533,7 +530,9 @@ class Gui():
             if r[0]:
                 self.koncaj_igro(r)
             else:
-                self.napis.set('Na potezi je igralec {}'.format(self.igra.na_potezi))
+                self.napis.set('IGRALEC {}'.format(self.igra.na_potezi))
+                barva = ["blue", "red"][self.igra.na_potezi - 1]
+                self.label_igralec.configure(fg=barva) 
                 if self.igra.na_potezi == IGRALEC_1:
                     self.igralec_1.igraj()
                 elif self.igra.na_potezi == IGRALEC_2:
@@ -546,6 +545,15 @@ class Gui():
             self.plosca.itemconfig(oznaka, fill='black')
             self.pozicija_prve = None
 
+    def razveljavi_potezo(self):
+        (i, j) = self.igra.zgodovina_pik.pop()
+        i, j = min(i, j), max(i, j)
+        self.igra.razveljavi()
+        self.igra.polje[i][j], self.igra.polje[j][i] = PRAZNO, PRAZNO
+        self.plosca.delete('crta{0}{1}'.format(i, j))
+        self.napis.set("IGRALEC {}".format(self.igra.na_potezi))
+        barva = ["blue", "red"][self.igra.na_potezi - 1]
+        self.label_igralec.configure(fg=barva) 
 
 
 
