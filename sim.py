@@ -2,6 +2,7 @@ import tkinter
 import threading
 import argparse
 import logging
+from PIL import Image, ImageTk
 
 # Privzeta minimax globina, če je nismo podali ob zagonu v ukazni vrstici
 PRIVZETA_GLOBINA = 3
@@ -414,7 +415,7 @@ class Gui():
         menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Minimax(globina))))
         menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Alpha_Beta(globina))))
 
-
+        
 
 
         # Katera pika
@@ -423,14 +424,18 @@ class Gui():
         # Napis, ki prikazuje stanje igre
         self.napis = tkinter.StringVar(master, value="IGRALEC 1")
         self.napis1 = tkinter.StringVar(master, value='Na potezi je ')
-        tkinter.Label(master, textvariable=self.napis1).grid(row=0, column=0, sticky='e')
-        self.label_igralec = tkinter.Label(master, textvariable=self.napis, fg='blue')
+        tkinter.Label(master, textvariable=self.napis1, font=('Times', 13)).grid(row=0, column=0, sticky='e')
+        self.label_igralec = tkinter.Label(master, font=('Times', 13), textvariable=self.napis, fg='blue')
         self.label_igralec.grid(row=0, column=1, sticky='w')
         
         # Igralno območje
         self.plosca = tkinter.Canvas(master, width=600, height=600)
         self.plosca.grid(row=2, column=0, columnspan=2)
 
+        # Navodila za igro
+        self.navodila = tkinter.Message(master, width=500, font=('Times', 12), text='Cilj igre je nasprotnika prisiliti, da s svojo barvo nariše trikotnik, katerega oglišča predstavljajo pike, ki so prikazane na zaslonu. Igralec črto povleče s klikom na piki, ki ju želi povezati. Če dvakrat označi isto piko, se izbira razveljavi.')
+        self.navodila.grid(row=3, column=0, columnspan=2)
+        
         # Pike na igralnem polju
         self.plosca.create_oval(290,105,310,85,tags='pika0', fill='black')
         self.plosca.create_oval(440,210,460,190,tags='pika1', fill='black')
@@ -452,10 +457,11 @@ class Gui():
 
     def zacni_igro(self, igralec_1, igralec_2):
         """Nastavi stanje igre na zacetek igre."""
+        self.napis1.set('Na potezi je ')
         self.napis.set("IGRALEC 1")
         self.barva = "blue"
         self.prekini_igralce()
-        self.plosca.delete('crta')
+        self.plosca.delete('crta', 'slika')
         self.igra = Igra()
         if (igralec_1, igralec_2) == (None, None):
             self.igralec_1 = Clovek(self)
@@ -474,7 +480,14 @@ class Gui():
         self.napis1.set('Izgubil je ')
         self.napis.set('IGRALEC {}'.format(trojica[1]))
         barva = ["blue", "red"][trojica[1] - 1]
-        self.label_igralec.configure(fg=barva) 
+        self.label_igralec.configure(fg=barva)
+        self.image = tkinter.PhotoImage(file='gamedog.png')
+        self.plosca.after(3000, self.narisi_koncno)
+        ##self.plosca.create_image(300, 300, image=self.image, tags='slika')
+
+    def narisi_koncno(self):
+        self.plosca.create_image(300, 300, image=self.image, tags='slika')
+        
 
     def prekini_igralce(self):
         """Sporoči igralcem, da morajo nehati razmišljati."""
