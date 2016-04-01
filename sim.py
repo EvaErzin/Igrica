@@ -27,6 +27,7 @@ def nasprotnik(igralec):
 
 class Igra():
     def __init__(self):
+        # XXX tu je zapečeno število 6
         self.polje = [[0, PRAZNO, PRAZNO, PRAZNO, PRAZNO, PRAZNO],
                       [PRAZNO, 0, PRAZNO, PRAZNO, PRAZNO, PRAZNO],
                       [PRAZNO, PRAZNO, 0, PRAZNO, PRAZNO, PRAZNO],
@@ -60,8 +61,8 @@ class Igra():
     def je_konec(self):
         """Vrne trojico (True, porazenec, povezane pike), če je igra končana in (False, None, PRAZNO), če igre še ni konec."""
         for i in range(6):
-            for j in range(i, 6):  ## range(i, 6)??
-                for k in range(6):
+            for j in range(i+1, 6):  ## range(i, 6)??
+                for k in range(j+1, 6):
                     if self.polje[i][j]in [0, PRAZNO]:
                         pass
                     elif self.polje[i][j] == self.polje[j][k] == self.polje[k][i]:
@@ -437,6 +438,7 @@ class Gui():
         self.navodila.grid(row=3, column=0, columnspan=2)
         
         # Pike na igralnem polju
+        # XXX tukaj je zapečeno število 6, to se spremeni v eno zanko
         self.plosca.create_oval(290,105,310,85,tags="pika0", fill="black")
         self.plosca.create_oval(440,210,460,190,tags="pika1", fill="black")
         self.plosca.create_oval(440,410,460,390,tags="pika2", fill="black")
@@ -481,7 +483,7 @@ class Gui():
         self.napis.set("IGRALEC {}".format(trojica[1]))
         barva = ["blue", "red"][trojica[1] - 1]
         self.label_igralec.configure(fg=barva)
-        self.image = tkinter.PhotoImage(file="gamedog.png")
+        self.image = tkinter.PhotoImage(file="gamedog.gif")
         self.plosca.after(3000, self.narisi_koncno)
         ##self.plosca.create_image(300, 300, image=self.image, tags="slika")
 
