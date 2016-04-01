@@ -2,7 +2,7 @@ import tkinter
 import threading
 import argparse
 import logging
-from PIL import Image, ImageTk
+
 
 # Privzeta minimax globina, če je nismo podali ob zagonu v ukazni vrstici
 PRIVZETA_GLOBINA = 3
@@ -58,7 +58,7 @@ class Igra():
         return self.polje[i][j] == PRAZNO
 
     def je_konec(self):
-        '''Vrne trojico (True, porazenec, povezane pike), če je igra končana in (False, None, PRAZNO), če igre še ni konec.'''
+        """Vrne trojico (True, porazenec, povezane pike), če je igra končana in (False, None, PRAZNO), če igre še ni konec."""
         for i in range(6):
             for j in range(i, 6):  ## range(i, 6)??
                 for k in range(6):
@@ -121,7 +121,7 @@ class Racunalnik():
         self.mislec = None #Vlakno, ki razmišlja
 
     def igraj(self):
-        '''Igra potezo, ki jo vrne algoritem'''
+        """Igra potezo, ki jo vrne algoritem"""
         self.mislec = threading.Thread(target=lambda : self.algoritem.izracunaj_potezo(self.gui.igra.kopija()))
         self.mislec.start()
         self.gui.plosca.after(100, self.preveri_potezo)
@@ -136,7 +136,7 @@ class Racunalnik():
 
     def prekini(self):
         if self.mislec:
-            logging.debug('Prekinjamo{0}'.format(self.mislec))
+            logging.debug("Prekinjamo{0}".format(self.mislec))
             self.algoritem.prekini()
             self.mislec.join()
             self.mislec = None
@@ -160,7 +160,7 @@ class Minimax():
         self.prekinitev = True
 
     def izracunaj_potezo(self, igra):
-        '''Izračuna potezo za trenutno stanje dane igre.'''
+        """Izračuna potezo za trenutno stanje dane igre."""
         self.igra = igra
         self.prekinitev = False
         self.jaz = self.igra.na_potezi
@@ -169,7 +169,7 @@ class Minimax():
         self.jaz = None
         self.igra = None
         if not self.prekinitev:
-            logging.debug('minimax: poteza {0}, vrednost {1}'.format(poteza, vrednost))
+            logging.debug("minimax: poteza {0}, vrednost {1}".format(poteza, vrednost))
         self.poteza = poteza
 
     # Vrednosti igre
@@ -177,7 +177,7 @@ class Minimax():
     NESKONCNO = ZMAGA + 1
 
     def vrednost_pozicije(self):
-        '''Ocena vrednosti pozicije: sešteje vrednosti vseh trikotnikov na plošči.'''
+        """Ocena vrednosti pozicije: sešteje vrednosti vseh trikotnikov na plošči."""
         vrednost_trikotnika = {
             (0, 3): Minimax.ZMAGA,
             (3, 0): -Minimax.ZMAGA//10,
@@ -208,9 +208,9 @@ class Minimax():
         return vrednost
 
     def minimax(self, globina, maksimiziramo):
-        '''Glavna metoda minimax.'''
+        """Glavna metoda minimax."""
         if self.prekinitev:
-            logging.debug('Minimax prekinja, globina = {0}'.format(globina))
+            logging.debug("Minimax prekinja, globina = {0}".format(globina))
             return (None, 0)
         (konec, porazenec, pike) = self.igra.je_konec()
         if konec:
@@ -219,7 +219,7 @@ class Minimax():
             elif porazenec == nasprotnik(self.jaz):
                 return (None, Minimax.ZMAGA)
             else:
-                assert False, 'Konec igre brez zmagovalca.'
+                assert False, "Konec igre brez zmagovalca."
         elif not konec:
             if globina == 0:
                 return (None, self.vrednost_pozicije())
@@ -245,9 +245,9 @@ class Minimax():
                             vrednost_najboljse = vrednost
                             najboljsa_poteza = (i, j)
 
-                assert (najboljsa_poteza is not None), 'minimax: izračunana poteza je None'
+                assert (najboljsa_poteza is not None), "minimax: izračunana poteza je None"
                 return (najboljsa_poteza, vrednost_najboljse)
-        else: assert False, 'minimax: nedefinirano stanje igre'
+        else: assert False, "minimax: nedefinirano stanje igre"
 
 ######################################################################
 ## Igralec alfa-beta
@@ -269,7 +269,7 @@ class Alpha_Beta():
     NESKONCNO = ZMAGA + 1
 
     def vrednost_pozicije(self):
-        '''Ocena vrednosti pozicije: sešteje vrednosti vseh trikotnikov na plošči.'''
+        """Ocena vrednosti pozicije: sešteje vrednosti vseh trikotnikov na plošči."""
         vrednost_trikotnika = {
             (0, 3): Alpha_Beta.ZMAGA,
             (3, 0): -Alpha_Beta.ZMAGA//10,
@@ -300,7 +300,7 @@ class Alpha_Beta():
         return vrednost
 
     def izracunaj_potezo(self, igra):
-        '''Izračuna potezo za trenutno stanje dane igre.'''
+        """Izračuna potezo za trenutno stanje dane igre."""
         self.igra = igra
         self.prekinitev = False
         self.jaz = self.igra.na_potezi
@@ -309,13 +309,13 @@ class Alpha_Beta():
         self.jaz = None
         self.igra = None
         if not self.prekinitev:
-            logging.debug('minimax: poteza {0}, vrednost {1}'.format(poteza, vrednost))
+            logging.debug("minimax: poteza {0}, vrednost {1}".format(poteza, vrednost))
         self.poteza = poteza
 
     def alphabeta(self, globina, maksimiziramo, alpha, beta):
-        '''Glavna metoda minimax.'''
+        """Glavna metoda minimax."""
         if self.prekinitev:
-            logging.debug('Minimax prekinja, globina = {0}'.format(globina))
+            logging.debug("Minimax prekinja, globina = {0}".format(globina))
             return (None, 0)
         (konec, porazenec, pike) = self.igra.je_konec()
         if konec:
@@ -324,7 +324,7 @@ class Alpha_Beta():
             elif porazenec == nasprotnik(self.jaz):
                 return (None, Alpha_Beta.ZMAGA)
             else:
-                assert False, 'Konec igre brez zmagovalca.'
+                assert False, "Konec igre brez zmagovalca."
         elif not konec:
             if globina == 0:
                 return (None, self.vrednost_pozicije())
@@ -365,8 +365,8 @@ class Alpha_Beta():
                             break
                     return (najboljsa_poteza, vrednost_najboljse)
 
-                assert (najboljsa_poteza is not None), 'alfa-beta: izračunana poteza je None'
-        else: assert False, 'alfa-beta: nedefinirano stanje igre'
+                assert (najboljsa_poteza is not None), "alfa-beta: izračunana poteza je None"
+        else: assert False, "alfa-beta: nedefinirano stanje igre"
 
 
 
@@ -381,7 +381,7 @@ class Gui():
         self.igra = None
         self.zadnja = None
 
-        master.protocol('WM_DELETE_WINDOW', lambda: self.zapri_okno(master))
+        master.protocol("WM_DELETE_WINDOW", lambda: self.zapri_okno(master))
 
         # Glavni menu
         menu = tkinter.Menu(master)
@@ -423,33 +423,33 @@ class Gui():
 
         # Napis, ki prikazuje stanje igre
         self.napis = tkinter.StringVar(master, value="IGRALEC 1")
-        self.napis1 = tkinter.StringVar(master, value='Na potezi je ')
-        tkinter.Label(master, textvariable=self.napis1, font=('Times', 13)).grid(row=0, column=0, sticky='e')
-        self.label_igralec = tkinter.Label(master, font=('Times', 13), textvariable=self.napis, fg='blue')
-        self.label_igralec.grid(row=0, column=1, sticky='w')
+        self.napis1 = tkinter.StringVar(master, value="Na potezi je ")
+        tkinter.Label(master, textvariable=self.napis1, font=("Times", 13)).grid(row=0, column=0, sticky="e")
+        self.label_igralec = tkinter.Label(master, font=("Times", 13), textvariable=self.napis, fg="blue")
+        self.label_igralec.grid(row=0, column=1, sticky="w")
         
         # Igralno območje
         self.plosca = tkinter.Canvas(master, width=600, height=600)
         self.plosca.grid(row=2, column=0, columnspan=2)
 
         # Navodila za igro
-        self.navodila = tkinter.Message(master, width=500, font=('Times', 12), text='Cilj igre je nasprotnika prisiliti, da s svojo barvo nariše trikotnik, katerega oglišča predstavljajo pike, ki so prikazane na zaslonu. Igralec črto povleče s klikom na piki, ki ju želi povezati. Če dvakrat označi isto piko, se izbira razveljavi.')
+        self.navodila = tkinter.Message(master, width=500, font=("Times", 12), text="Cilj igre je nasprotnika prisiliti, da s svojo barvo nariše trikotnik, katerega oglišča predstavljajo pike, ki so prikazane na zaslonu. Igralec črto povleče s klikom na piki, ki ju želi povezati. Če dvakrat označi isto piko, se izbira razveljavi.")
         self.navodila.grid(row=3, column=0, columnspan=2)
         
         # Pike na igralnem polju
-        self.plosca.create_oval(290,105,310,85,tags='pika0', fill='black')
-        self.plosca.create_oval(440,210,460,190,tags='pika1', fill='black')
-        self.plosca.create_oval(440,410,460,390,tags='pika2', fill='black')
-        self.plosca.create_oval(290,515,310,495,tags='pika3', fill='black')
-        self.plosca.create_oval(140,410,160,390,tags='pika4', fill='black')
-        self.plosca.create_oval(140,210,160,190,tags='pika5', fill='black')
+        self.plosca.create_oval(290,105,310,85,tags="pika0", fill="black")
+        self.plosca.create_oval(440,210,460,190,tags="pika1", fill="black")
+        self.plosca.create_oval(440,410,460,390,tags="pika2", fill="black")
+        self.plosca.create_oval(290,515,310,495,tags="pika3", fill="black")
+        self.plosca.create_oval(140,410,160,390,tags="pika4", fill="black")
+        self.plosca.create_oval(140,210,160,190,tags="pika5", fill="black")
 
-        self.plosca.tag_bind('pika0','<Button-1>',func=self.pika_klik(0))
-        self.plosca.tag_bind('pika1','<Button-1>',func=self.pika_klik(1))
-        self.plosca.tag_bind('pika2','<Button-1>',func=self.pika_klik(2))
-        self.plosca.tag_bind('pika3','<Button-1>',func=self.pika_klik(3))
-        self.plosca.tag_bind('pika4','<Button-1>',func=self.pika_klik(4))
-        self.plosca.tag_bind('pika5','<Button-1>',func=self.pika_klik(5))
+        self.plosca.tag_bind("pika0","<Button-1>",func=self.pika_klik(0))
+        self.plosca.tag_bind("pika1","<Button-1>",func=self.pika_klik(1))
+        self.plosca.tag_bind("pika2","<Button-1>",func=self.pika_klik(2))
+        self.plosca.tag_bind("pika3","<Button-1>",func=self.pika_klik(3))
+        self.plosca.tag_bind("pika4","<Button-1>",func=self.pika_klik(4))
+        self.plosca.tag_bind("pika5","<Button-1>",func=self.pika_klik(5))
 
         # Prični z izbiro igralcev
         self.zacni_igro(Clovek(self), Clovek(self))
@@ -457,11 +457,11 @@ class Gui():
 
     def zacni_igro(self, igralec_1, igralec_2):
         """Nastavi stanje igre na zacetek igre."""
-        self.napis1.set('Na potezi je ')
+        self.napis1.set("Na potezi je ")
         self.napis.set("IGRALEC 1")
         self.barva = "blue"
         self.prekini_igralce()
-        self.plosca.delete('crta', 'slika')
+        self.plosca.delete("crta", "slika")
         self.igra = Igra()
         if (igralec_1, igralec_2) == (None, None):
             self.igralec_1 = Clovek(self)
@@ -473,20 +473,20 @@ class Gui():
 
     def koncaj_igro(self, trojica):
         """Nastavi stanje igre na konec igre."""
-        barva = ['blue', 'red'][trojica[1] - 1]
+        barva = ["blue", "red"][trojica[1] - 1]
         self.narisi_crto(trojica[2][0], trojica[2][1], barva, 10)
         self.narisi_crto(trojica[2][1], trojica[2][2], barva, 10)
         self.narisi_crto(trojica[2][0], trojica[2][2], barva, 10)
-        self.napis1.set('Izgubil je ')
-        self.napis.set('IGRALEC {}'.format(trojica[1]))
+        self.napis1.set("Izgubil je ")
+        self.napis.set("IGRALEC {}".format(trojica[1]))
         barva = ["blue", "red"][trojica[1] - 1]
         self.label_igralec.configure(fg=barva)
-        self.image = tkinter.PhotoImage(file='gamedog.png')
+        self.image = tkinter.PhotoImage(file="gamedog.png")
         self.plosca.after(3000, self.narisi_koncno)
-        ##self.plosca.create_image(300, 300, image=self.image, tags='slika')
+        ##self.plosca.create_image(300, 300, image=self.image, tags="slika")
 
     def narisi_koncno(self):
-        self.plosca.create_image(300, 300, image=self.image, tags='slika')
+        self.plosca.create_image(300, 300, image=self.image, tags="slika")
         
 
     def prekini_igralce(self):
@@ -515,8 +515,8 @@ class Gui():
         x1, y1 = pike[druga_pika][0], pike[druga_pika][1]
         a = min(prva_pika, druga_pika)
         b = max(prva_pika, druga_pika)
-        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=debelina, state='disabled', tags=('crta', 'crta{0}{1}'.format(a, b)))
-        self.plosca.tag_lower('crta')
+        self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=debelina, state="disabled", tags=("crta", "crta{0}{1}".format(a, b)))
+        self.plosca.tag_lower("crta")
 
     def pika_klik(self, pozicija):
         def pomozna(event):
@@ -530,20 +530,20 @@ class Gui():
         """Shrani pozicijo prve pike in povlece potezo, ce je ta ze shranjena."""
         igralec = self.igra.na_potezi
         if self.pozicija_prve == None:
-            oznaka = 'pika{}'.format(pozicija)
+            oznaka = "pika{}".format(pozicija)
             self.pozicija_prve = pozicija
-            self.plosca.itemconfig(oznaka, fill='grey')
+            self.plosca.itemconfig(oznaka, fill="grey")
         elif self.igra.je_veljavna(self.pozicija_prve, pozicija):
-            oznaka = 'pika{}'.format(self.pozicija_prve)
-            self.plosca.itemconfig(oznaka, fill='black')
+            oznaka = "pika{}".format(self.pozicija_prve)
+            self.plosca.itemconfig(oznaka, fill="black")
             r = self.igra.povleci(self.pozicija_prve, pozicija)
             if r:
-                barva = ['blue', 'red'][igralec - 1]
+                barva = ["blue", "red"][igralec - 1]
                 self.narisi_crto(self.pozicija_prve, pozicija, barva)
             if r[0]:
                 self.koncaj_igro(r)
             else:
-                self.napis.set('IGRALEC {}'.format(self.igra.na_potezi))
+                self.napis.set("IGRALEC {}".format(self.igra.na_potezi))
                 barva = ["blue", "red"][self.igra.na_potezi - 1]
                 self.label_igralec.configure(fg=barva) 
                 if self.igra.na_potezi == IGRALEC_1:
@@ -551,11 +551,11 @@ class Gui():
                 elif self.igra.na_potezi == IGRALEC_2:
                     self.igralec_2.igraj()
                 else:
-                    assert False, 'Na potezi ni noben igralec'
+                    assert False, "Na potezi ni noben igralec"
             self.pozicija_prve = None
         else:
-            oznaka = 'pika{}'.format(self.pozicija_prve)
-            self.plosca.itemconfig(oznaka, fill='black')
+            oznaka = "pika{}".format(self.pozicija_prve)
+            self.plosca.itemconfig(oznaka, fill="black")
             self.pozicija_prve = None
 
     def razveljavi_potezo(self):
@@ -563,10 +563,11 @@ class Gui():
         i, j = min(i, j), max(i, j)
         self.igra.razveljavi()
         self.igra.polje[i][j], self.igra.polje[j][i] = PRAZNO, PRAZNO
-        self.plosca.delete('crta{0}{1}'.format(i, j))
+        self.plosca.delete("crta{0}{1}".format(i, j))
         self.napis.set("IGRALEC {}".format(self.igra.na_potezi))
         barva = ["blue", "red"][self.igra.na_potezi - 1]
-        self.label_igralec.configure(fg=barva) 
+        self.label_igralec.configure(fg=barva)
+
 
 
 
@@ -581,14 +582,14 @@ if __name__ == "__main__":
     # Opišemo argumente, ki jih sprejmemo iz ukazne vrstice
     parser = argparse.ArgumentParser(description="Igrica Sim")
     # Argument --globina n, s privzeto vrednostjo PRIVZETA_GLOBINA
-    parser.add_argument('--globina',
+    parser.add_argument("--globina",
                         default=PRIVZETA_GLOBINA,
                         type=int,
-                        help='globina iskanja za minimax algoritem')
+                        help="globina iskanja za minimax algoritem")
     # Argument --debug, ki vklopi sporočila o tem, kaj se dogaja
-    parser.add_argument('--debug',
-                        action='store_true',
-                        help='vklopi sporočila o dogajanju')
+    parser.add_argument("--debug",
+                        action="store_true",
+                        help="vklopi sporočila o dogajanju")
 
     # Obdelamo argumente iz ukazne vrstice
     args = parser.parse_args()
