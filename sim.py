@@ -2,10 +2,10 @@ import tkinter
 import threading
 import argparse
 import logging
-
+import math
 
 # Privzeta minimax globina, če je nismo podali ob zagonu v ukazni vrstici
-PRIVZETA_GLOBINA = 3
+PRIVZETA_GLOBINA = 2
 
 ######################################################################
 # ## Igra
@@ -26,27 +26,26 @@ def nasprotnik(igralec):
 
 
 class Igra():
-    def __init__(self):
-        # XXX tu je zapečeno število 6
-        self.polje = [[0, PRAZNO, PRAZNO, PRAZNO, PRAZNO, PRAZNO],
-                      [PRAZNO, 0, PRAZNO, PRAZNO, PRAZNO, PRAZNO],
-                      [PRAZNO, PRAZNO, 0, PRAZNO, PRAZNO, PRAZNO],
-                      [PRAZNO, PRAZNO, PRAZNO, 0, PRAZNO, PRAZNO],
-                      [PRAZNO, PRAZNO, PRAZNO, PRAZNO, 0, PRAZNO],
-                      [PRAZNO, PRAZNO, PRAZNO, PRAZNO, PRAZNO, 0]]
+    def __init__(self, velikost):
+        self.velikost = velikost
+        self.polje = []
+        for i in range(self.velikost):
+            self.polje += [[PRAZNO[:] for i in range(self.velikost)]]
+            self.polje[i][i] = 0
+
         self.na_potezi = IGRALEC_1
         self.zgodovina = []
         self.zgodovina_pik = []
 
     def shrani_pozicijo(self):
         """Shrani trenutno pozicijo."""
-        p = [self.polje[i][:] for i in range(6)]
+        p = [self.polje[i][:] for i in range(self.velikost)]
         self.zgodovina.append((p, self.na_potezi))
 
     def kopija(self):
         """Vrne kopijo igre."""
-        kopija = Igra()
-        kopija.polje = [self.polje[i][:] for i in range(6)]
+        kopija = Igra(self.velikost)
+        kopija.polje = [self.polje[i][:] for i in range(self.velikost)]
         kopija.na_potezi = self.na_potezi
         return kopija
 
@@ -60,9 +59,9 @@ class Igra():
 
     def je_konec(self):
         """Vrne trojico (True, porazenec, povezane pike), če je igra končana in (False, None, PRAZNO), če igre še ni konec."""
-        for i in range(6):
-            for j in range(i+1, 6):  ## range(i, 6)??
-                for k in range(j+1, 6):
+        for i in range(self.velikost):
+            for j in range(i+1, self.velikost):
+                for k in range(j+1, self.velikost):
                     if self.polje[i][j]in [0, PRAZNO]:
                         pass
                     elif self.polje[i][j] == self.polje[j][k] == self.polje[k][i]:
@@ -73,8 +72,8 @@ class Igra():
     def veljavne_poteze(self):
         """Vrne seznam veljavnih potez."""
         poteze = []
-        for i in range(6):
-            for j in range(i+1, 6):
+        for i in range(self.velikost):
+            for j in range(i+1, self.velikost):
                 if self.je_veljavna(i, j) and (i, j) not in poteze:
                     poteze.append((i,j))
         return poteze
@@ -156,6 +155,7 @@ class Minimax():
         self.igra = None
         self.jaz = None
         self.poteza = None
+        self.velikost = None
 
     def prekini(self):
         self.prekinitev = True
@@ -163,6 +163,7 @@ class Minimax():
     def izracunaj_potezo(self, igra):
         """Izračuna potezo za trenutno stanje dane igre."""
         self.igra = igra
+        self.velikost = self.igra.velikost
         self.prekinitev = False
         self.jaz = self.igra.na_potezi
         self.poteza = None
@@ -188,9 +189,10 @@ class Minimax():
             (1, 0): -Minimax.ZMAGA//100000
         }
         vrednost = 0
-        for i in range(6):
-            for j in range(i+1, 6):
-                for k in range (j+1, 6):
+
+        for i in range(self.velikost):
+            for j in range(i+1, self.velikost):
+                for k in range (j+1, self.velikost):
                     x = 0
                     y = 0
                     if self.igra.polje[i][j] == self.jaz:
@@ -261,6 +263,7 @@ class Alpha_Beta():
         self.igra = None
         self.jaz = None
         self.poteza = None
+        self.velikost = None
 
     def prekini(self):
         self.prekinitev = True
@@ -280,9 +283,9 @@ class Alpha_Beta():
             (1, 0): -Alpha_Beta.ZMAGA//100000
         }
         vrednost = 0
-        for i in range(6):
-            for j in range(i+1, 6):
-                for k in range (j+1, 6):
+        for i in range(self.velikost):
+            for j in range(i+1, self.velikost):
+                for k in range (j+1, self.velikost):
                     x = 0
                     y = 0
                     if self.igra.polje[i][j] == self.jaz:
@@ -303,6 +306,7 @@ class Alpha_Beta():
     def izracunaj_potezo(self, igra):
         """Izračuna potezo za trenutno stanje dane igre."""
         self.igra = igra
+        self.velikost = self.igra.velikost
         self.prekinitev = False
         self.jaz = self.igra.na_potezi
         self.poteza = None
@@ -381,6 +385,7 @@ class Gui():
         self.igralec_2 = None
         self.igra = None
         self.zadnja = None
+        self.velikost = 6
 
         master.protocol("WM_DELETE_WINDOW", lambda: self.zapri_okno(master))
 
@@ -394,33 +399,41 @@ class Gui():
         menu_clo_rac = tkinter.Menu(menu_igralci)
         menu_rac_clo = tkinter.Menu(menu_igralci)
         menu_rac = tkinter.Menu(menu_igralci)
+        menu_stevilo = tkinter.Menu(menu)
 
         menu.add_cascade(label="Igra", menu=menu_igra)
-        menu_igra.add_command(label="Nova igra", command=lambda: self.zacni_igro(self.igralec_1, self.igralec_2))
+        menu_igra.add_command(label="Nova igra", command=lambda: self.zacni_igro(self.velikost, self.igralec_1, self.igralec_2))
         menu_igra.add_command(label="Razveljavi", command=self.razveljavi_potezo)
         menu_igra.add_separator()
         menu_igra.add_command(label="Izhod", command=master.quit)
 
         menu.add_cascade(label="Igralci", menu=menu_igralci)
-        menu_igralci.add_command(label="1=Človek, 2=Človek", command=lambda: self.zacni_igro(Clovek(self), Clovek(self)))
-        menu_igralci.add_cascade(label="1=Človek, 2=Računalnik", menu=menu_clo_rac) ##
-        menu_igralci.add_cascade(label="1=Računalnik, 2=Človek", menu=menu_rac_clo) ##     command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Clovek(self)))
-        menu_igralci.add_cascade(label="1=Računalnik, 2=Računalnik", menu=menu_rac) ## command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Minimax(globina))))
+        menu_igralci.add_command(label="1=Človek, 2=Človek", command=lambda: self.zacni_igro(self.velikost, Clovek(self), Clovek(self)))
+        menu_igralci.add_cascade(label="1=Človek, 2=Računalnik", menu=menu_clo_rac)
+        menu_igralci.add_cascade(label="1=Računalnik, 2=Človek", menu=menu_rac_clo)
+        menu_igralci.add_cascade(label="1=Računalnik, 2=Računalnik", menu=menu_rac)
 
-        menu_clo_rac.add_command(label="Algoritem Minimax", command=lambda: self.zacni_igro(Clovek(self), Racunalnik(self, Minimax(globina))))
-        menu_clo_rac.add_command(label="Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Clovek(self), Racunalnik(self, Alpha_Beta(globina))))
-        menu_rac_clo.add_command(label="Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Clovek(self)))
-        menu_rac_clo.add_command(label="Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Clovek(self)))
-        menu_rac.add_command(label="1=Algoritem Minimax, 2=Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Minimax(globina))))
-        menu_rac.add_command(label="1=Algoritem Minimax, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Minimax(globina)), Racunalnik(self, Alpha_Beta(globina))))
-        menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Minimax", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Minimax(globina))))
-        menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Alpha_Beta(globina))))
+        menu_clo_rac.add_command(label="Algoritem Minimax", command=lambda: self.zacni_igro(self.velikost, Clovek(self), Racunalnik(self, Minimax(globina))))
+        menu_clo_rac.add_command(label="Algoritem Alfa-Beta", command=lambda: self.zacni_igro(self.velikost, Clovek(self), Racunalnik(self, Alpha_Beta(globina))))
+        menu_rac_clo.add_command(label="Algoritem Minimax", command=lambda: self.zacni_igro(self.velikost, Racunalnik(self, Minimax(globina)), Clovek(self)))
+        menu_rac_clo.add_command(label="Algoritem Alfa-Beta", command=lambda: self.zacni_igro(self.velikost, Racunalnik(self, Alpha_Beta(globina)), Clovek(self)))
+        menu_rac.add_command(label="1=Algoritem Minimax, 2=Algoritem Minimax", command=lambda: self.zacni_igro(self.velikost, Racunalnik(self, Minimax(globina)), Racunalnik(self, Minimax(globina))))
+        menu_rac.add_command(label="1=Algoritem Minimax, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(self.velikost, Racunalnik(self, Minimax(globina)), Racunalnik(self, Alpha_Beta(globina))))
+        menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Minimax", command=lambda: self.zacni_igro(self.velikost, Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Minimax(globina))))
+        menu_rac.add_command(label="1=Algoritem Alfa-Beta, 2=Algoritem Alfa-Beta", command=lambda: self.zacni_igro(self.velikost, Racunalnik(self, Alpha_Beta(globina)), Racunalnik(self, Alpha_Beta(globina))))
 
-        
+        menu.add_cascade(label="Število oglišč", menu=menu_stevilo)
+        menu_stevilo.add_command(label="5", command=lambda: self.oglisca(5))
+        menu_stevilo.add_command(label="6", command=lambda: self.oglisca(6))
+        menu_stevilo.add_command(label="7", command=lambda: self.oglisca(7))
+        menu_stevilo.add_command(label="8", command=lambda: self.oglisca(8))
+        menu_stevilo.add_command(label="9", command=lambda: self.oglisca(9))
+        menu_stevilo.add_command(label="10", command=lambda: self.oglisca(10))
 
 
         # Katera pika
         self.pozicija_prve = None
+
 
         # Napis, ki prikazuje stanje igre
         self.napis = tkinter.StringVar(master, value="IGRALEC 1")
@@ -436,35 +449,25 @@ class Gui():
         # Navodila za igro
         self.navodila = tkinter.Message(master, width=500, font=("Times", 12), text="Cilj igre je nasprotnika prisiliti, da s svojo barvo nariše trikotnik, katerega oglišča predstavljajo pike, ki so prikazane na zaslonu. Igralec črto povleče s klikom na piki, ki ju želi povezati. Če dvakrat označi isto piko, se izbira razveljavi.")
         self.navodila.grid(row=3, column=0, columnspan=2)
-        
-        # Pike na igralnem polju
-        # XXX tukaj je zapečeno število 6, to se spremeni v eno zanko
-        self.plosca.create_oval(290,105,310,85,tags="pika0", fill="black")
-        self.plosca.create_oval(440,210,460,190,tags="pika1", fill="black")
-        self.plosca.create_oval(440,410,460,390,tags="pika2", fill="black")
-        self.plosca.create_oval(290,515,310,495,tags="pika3", fill="black")
-        self.plosca.create_oval(140,410,160,390,tags="pika4", fill="black")
-        self.plosca.create_oval(140,210,160,190,tags="pika5", fill="black")
 
-        self.plosca.tag_bind("pika0","<Button-1>",func=self.pika_klik(0))
-        self.plosca.tag_bind("pika1","<Button-1>",func=self.pika_klik(1))
-        self.plosca.tag_bind("pika2","<Button-1>",func=self.pika_klik(2))
-        self.plosca.tag_bind("pika3","<Button-1>",func=self.pika_klik(3))
-        self.plosca.tag_bind("pika4","<Button-1>",func=self.pika_klik(4))
-        self.plosca.tag_bind("pika5","<Button-1>",func=self.pika_klik(5))
 
         # Prični z izbiro igralcev
-        self.zacni_igro(Clovek(self), Clovek(self))
+        self.zacni_igro(self.velikost, Clovek(self), Clovek(self))
 
+        for i in range(self.igra.velikost):
+            phi = (360 * i) / self.velikost
+            x, y = 300 + 200 * (math.cos(math.radians(phi))), 300 + 200 * (math.sin(math.radians(phi)))
+            self.plosca.create_oval(x - 10, y + 10, x + 10, y - 10, tags=["pika{}".format(i), "pika"], fill="black")
+            self.plosca.tag_bind("pika{}".format(i), "<Button-1>", func=self.pika_klik(i))
 
-    def zacni_igro(self, igralec_1, igralec_2):
+    def zacni_igro(self, velikost, igralec_1, igralec_2):
         """Nastavi stanje igre na zacetek igre."""
         self.napis1.set("Na potezi je ")
         self.napis.set("IGRALEC 1")
         self.barva = "blue"
         self.prekini_igralce()
         self.plosca.delete("crta", "slika")
-        self.igra = Igra()
+        self.igra = Igra(velikost)
         if (igralec_1, igralec_2) == (None, None):
             self.igralec_1 = Clovek(self)
             self.igralec_2 = Clovek(self)
@@ -484,12 +487,21 @@ class Gui():
         barva = ["blue", "red"][trojica[1] - 1]
         self.label_igralec.configure(fg=barva)
         self.image = tkinter.PhotoImage(file="gamedog.gif")
-        self.plosca.after(3000, self.narisi_koncno)
-        ##self.plosca.create_image(300, 300, image=self.image, tags="slika")
+        self.plosca.after(1500, self.narisi_koncno)
+
 
     def narisi_koncno(self):
         self.plosca.create_image(300, 300, image=self.image, tags="slika")
         
+    def oglisca(self, stevilo):
+        self.velikost = stevilo
+        self.plosca.delete('pika')
+        for i in range(self.velikost):
+            phi = (360*i)/self.velikost
+            x, y = 300 + 200*(math.cos(math.radians(phi))), 300 + 200*(math.sin(math.radians(phi)))
+            self.plosca.create_oval(x-10, y+10, x+10, y-10, tags=["pika{}".format(i), "pika"], fill="black")
+            self.plosca.tag_bind("pika{}".format(i), "<Button-1>", func=self.pika_klik(i))
+        self.zacni_igro(self.velikost, self.igralec_1, self.igralec_2)
 
     def prekini_igralce(self):
         """Sporoči igralcem, da morajo nehati razmišljati."""
@@ -507,14 +519,11 @@ class Gui():
         master.destroy()
 
     def narisi_crto(self, prva_pika, druga_pika, barva, debelina=5):
-        pike = [[300, 95],
-                [450, 200],
-                [450, 400],
-                [300, 505],
-                [150, 400],
-                [150, 200]]
-        x0, y0 = pike[prva_pika][0], pike[prva_pika][1]
-        x1, y1 = pike[druga_pika][0], pike[druga_pika][1]
+        phi0 = (360 * prva_pika) / self.velikost
+        x0, y0 = 300 + 200 * (math.cos(math.radians(phi0))), 300 + 200 * (math.sin(math.radians(phi0)))
+        phi1 = (360 * druga_pika) / self.velikost
+        x1, y1 = 300 + 200 * (math.cos(math.radians(phi1))), 300 + 200 * (math.sin(math.radians(phi1)))
+
         a = min(prva_pika, druga_pika)
         b = max(prva_pika, druga_pika)
         self.plosca.create_line(x0, y0, x1, y1, fill=barva, width=debelina, state="disabled", tags=("crta", "crta{0}{1}".format(a, b)))
